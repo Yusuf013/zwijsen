@@ -1,13 +1,40 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+
+interface SavedDoc {
+  id: string;
+  dataUrl: string;
+  date: string;
+}
 
 export default function DocumentScanner() {
   const [image, setImage] = useState<string | null>(null);
+  const [savedDocs, setSavedDocs] = useState<SavedDoc[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Laad opgeslagen documenten bij het laden van het component
+  useEffect(() => {
+    const docs = localStorage.getItem("scannedDocs");
+    if (docs) {
+      setSavedDocs(JSON.parse(docs));
+    }
+  }, []);
+
+  // Sla een nieuwe afbeelding op
+  const saveDoc = (dataUrl: string) => {
+    const newDoc: SavedDoc = {
+      id: Date.now().toString(),
+      dataUrl,
+      date: new Date().toLocaleString(),
+    };
+    const updatedDocs = [newDoc, ...savedDocs];
+    setSavedDocs(updatedDocs);
+    localStorage.setItem("scannedDocs", JSON.stringify(updatedDocs));
+  };
 
   // Start camera
   const startCamera = async () => {
@@ -35,7 +62,9 @@ export default function DocumentScanner() {
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      setImage(canvas.toDataURL("image/png"));
+      const dataUrl = canvas.toDataURL("image/png");
+      setImage(dataUrl);
+      saveDoc(dataUrl);
     }
     // Stop camera
     const stream = video.srcObject as MediaStream;
@@ -61,7 +90,9 @@ export default function DocumentScanner() {
     if (file) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setImage(ev.target?.result as string);
+        const dataUrl = ev.target?.result as string;
+        setImage(dataUrl);
+        saveDoc(dataUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -107,6 +138,19 @@ export default function DocumentScanner() {
         <div className="flex flex-col items-center gap-2">
           <div className="font-semibold">Preview:</div>
           <img src={image} alt="Preview" className="max-w-xs rounded shadow" />
+        </div>
+      )}
+      {savedDocs.length > 0 && (
+        <div className="w-full mt-6">
+          <h3 className="font-bold mb-2 text-lg">Opgeslagen documenten/afbeeldingen</h3>
+          <div className="grid grid-cols-2 gap-4">
+            {savedDocs.map((doc) => (
+              <div key={doc.id} className="flex flex-col items-center bg-gray-100 rounded p-2 shadow">
+                <img src={doc.dataUrl} alt="Document" className="max-h-32 rounded mb-1" />
+                <span className="text-xs text-gray-500">{doc.date}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
