@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoginForm from "./LoginForm";
 import Navigation from "./Navigation";
+import Image from "next/image";
+import Link from "next/link";
 
 interface Toets {
   id: number;
@@ -13,10 +15,48 @@ interface Toets {
   status: "te_nakijken" | "te_afnemen";
 }
 
+const tiles = [
+  {
+    label: "Scan",
+    icon: (
+      <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M12 20v-2a8 8 0 0 1 8-8h8a8 8 0 0 1 8 8v2" stroke="#92278f" strokeWidth="2.5" strokeLinecap="round"/><rect x="16" y="24" width="16" height="10" rx="3" stroke="#92278f" strokeWidth="2.5"/><circle cx="24" cy="29" r="2" fill="#92278f"/></svg>
+    ),
+    color: "#92278f",
+    action: "scan"
+  },
+  {
+    label: "Geschiedenis",
+    icon: (
+      <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M24 8a16 16 0 1 0 16 16" stroke="#8dc63f" strokeWidth="2.5" strokeLinecap="round"/><path d="M24 16v8l6 3" stroke="#8dc63f" strokeWidth="2.5" strokeLinecap="round"/><path d="M8 8v8h8" stroke="#8dc63f" strokeWidth="2.5" strokeLinecap="round"/></svg>
+    ),
+    color: "#8dc63f",
+    href: "/geschiedenis"
+  },
+  {
+    label: "Edit",
+    icon: (
+      <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M32.5 13.5l2 2a2.828 2.828 0 0 1 0 4l-14 14a2 2 0 0 1-1.414.586H12v-5.086a2 2 0 0 1 .586-1.414l14-14a2.828 2.828 0 0 1 4 0z" stroke="#f15a24" strokeWidth="2.5"/><path d="M28 16l4 4" stroke="#f15a24" strokeWidth="2.5"/></svg>
+    ),
+    color: "#f15a24",
+    href: "/edit"
+  },
+  {
+    label: "Ask AI",
+    icon: (
+      <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M24 8v4" stroke="#fbbd16" strokeWidth="2.5" strokeLinecap="round"/><path d="M24 36v4" stroke="#fbbd16" strokeWidth="2.5" strokeLinecap="round"/><path d="M8 24h4" stroke="#fbbd16" strokeWidth="2.5" strokeLinecap="round"/><path d="M36 24h4" stroke="#fbbd16" strokeWidth="2.5" strokeLinecap="round"/><circle cx="24" cy="24" r="8" stroke="#fbbd16" strokeWidth="2.5"/><circle cx="24" cy="24" r="2" fill="#fbbd16"/></svg>
+    ),
+    color: "#fbbd16",
+    href: "/ai"
+  }
+];
+
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [toetsen, setToetsen] = useState<Toets[]>([]);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -84,6 +124,29 @@ export default function Home() {
     });
   };
 
+  const openCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      streamRef.current = stream;
+    } catch (err) {
+      setShowCamera(false);
+      alert("Camera openen mislukt of geweigerd.");
+    }
+  };
+
+  const closeCamera = () => {
+    setShowCamera(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
   if (!isLoggedIn) {
     return <LoginForm onLogin={handleLogin} />;
   }
@@ -93,111 +156,41 @@ export default function Home() {
   const toetsenTeAfnemen = toetsen.filter(toets => toets.status === "te_afnemen");
 
   return (
-    <div className="min-h-screen bg-[#fdfbf7] flex">
-      <div className="w-64 flex-shrink-0">
-        <Navigation />
+    <div className="min-h-screen bg-white flex flex-col justify-between">
+      <div className="flex flex-col items-center pt-8 pb-4">
+        <Image src="/zwijsenlog.png" alt="Nokijk logo" width={220} height={80} priority className="mb-6 w-56 h-auto" />
+        <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+          {tiles.map(tile => tile.action === "scan" ? (
+            <button
+              key={tile.label}
+              className="bg-[#eaf6fa] rounded-2xl flex flex-col items-center justify-center py-7 px-2 shadow hover:scale-105 transition-transform"
+              onClick={openCamera}
+              type="button"
+            >
+              <span>{tile.icon}</span>
+              <span className="mt-2 text-lg font-bold text-black" style={{color: tile.color}}>{tile.label}</span>
+            </button>
+          ) : (
+            <Link href={tile.href!} key={tile.label} className="bg-[#eaf6fa] rounded-2xl flex flex-col items-center justify-center py-7 px-2 shadow hover:scale-105 transition-transform">
+              <span>{tile.icon}</span>
+              <span className="mt-2 text-lg font-bold text-black" style={{color: tile.color}}>{tile.label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
-      <main className="flex-1 px-8 py-10">
-        {/* Zoekbalk */}
-        <div className="mb-8 flex items-center space-x-4">
-          <div className="relative w-full max-w-md">
-            <input
-              type="text"
-              placeholder="Zoeken"
-              className="w-full pl-12 pr-4 py-3 rounded-full bg-white border border-gray-200 shadow focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400"
-              disabled
-            />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </span>
-          </div>
+      <div className="relative w-full mt-8 flex-1">
+        <div className="absolute bottom-0 left-0 w-full h-48 bg-[#eaf6fa] rounded-t-3xl" />
+        <button className="fixed bottom-8 right-8 z-10 bg-[#92278f] text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg text-4xl hover:bg-[#7a1e6c] transition-colors">
+          +
+        </button>
+      </div>
+      {showCamera && (
+        <div className="fixed inset-0 bg-white bg-opacity-95 z-50 flex flex-col items-center justify-center">
+          <button onClick={closeCamera} className="absolute top-4 right-4 bg-gray-200 rounded-full w-12 h-12 flex items-center justify-center text-3xl font-bold text-gray-700 shadow hover:bg-gray-300 transition-all">&times;</button>
+          <video ref={videoRef} autoPlay playsInline className="rounded-2xl shadow-lg w-11/12 max-w-xs h-auto" />
+          <p className="mt-4 text-gray-700">Voorcamera actief</p>
         </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border-2 border-blue-100">
-          <h1 className="text-3xl font-bold text-blue-800 mb-2">
-            Welkom terug, {userEmail?.split("@")[0]}!
-          </h1>
-          <p className="text-gray-600">
-            Het is vandaag {getDagVanDeWeek()}, {new Date().toLocaleDateString("nl-NL", {
-              day: "numeric",
-              month: "long",
-              year: "numeric"
-            })}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Toetsen vandaag */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
-            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen vandaag</h2>
-            {toetsenVandaag.length > 0 ? (
-              <div className="space-y-4">
-                {toetsenVandaag.map(toets => (
-                  <div key={toets.id} className="bg-blue-50 p-4 rounded-full flex items-center justify-between border border-blue-200">
-                    <div>
-                      <h3 className="font-semibold text-blue-900">{toets.titel}</h3>
-                      <p className="text-blue-700">{toets.vak} - {toets.groep}</p>
-                    </div>
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                      toets.status === "te_nakijken" 
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-green-100 text-green-800"
-                    }`}>
-                      {toets.status === "te_nakijken" ? "Te nakijken" : "Te afnemen"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">Geen toetsen vandaag</p>
-            )}
-          </div>
-
-          {/* Toetsen te nakijken */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
-            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen te nakijken</h2>
-            {toetsenTeNakijken.length > 0 ? (
-              <div className="space-y-4">
-                {toetsenTeNakijken.map(toets => (
-                  <div key={toets.id} className="bg-yellow-50 p-4 rounded-full flex items-center justify-between border border-yellow-200">
-                    <div>
-                      <h3 className="font-semibold text-yellow-900">{toets.titel}</h3>
-                      <p className="text-yellow-700">{toets.vak} - {toets.groep}</p>
-                    </div>
-                    <p className="text-yellow-600 text-sm mt-1">
-                      Afgenomen op {formatDatum(toets.datum)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">Geen toetsen te nakijken</p>
-            )}
-          </div>
-
-          {/* Toetsen te afnemen */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
-            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen te afnemen</h2>
-            {toetsenTeAfnemen.length > 0 ? (
-              <div className="space-y-4">
-                {toetsenTeAfnemen.map(toets => (
-                  <div key={toets.id} className="bg-green-50 p-4 rounded-full flex items-center justify-between border border-green-200">
-                    <div>
-                      <h3 className="font-semibold text-green-900">{toets.titel}</h3>
-                      <p className="text-green-700">{toets.vak} - {toets.groep}</p>
-                    </div>
-                    <p className="text-green-600 text-sm mt-1">
-                      Gepland op {formatDatum(toets.datum)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600">Geen toetsen te afnemen</p>
-            )}
-          </div>
-        </div>
-      </main>
+      )}
     </div>
   );
 }
