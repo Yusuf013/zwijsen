@@ -1,32 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
-interface FormData {
-  naam: string;
+interface LoginFormData {
   email: string;
-  school: string;
-  klas: string;
-  vak: string;
+  wachtwoord: string;
 }
 
-export default function LoginForm() {
-  const [formData, setFormData] = useState<FormData>({
-    naam: "",
+export default function LoginForm({ onLogin }: { onLogin: () => void }) {
+  const [formData, setFormData] = useState<LoginFormData>({
     email: "",
-    school: "",
-    klas: "",
-    vak: ""
+    wachtwoord: ""
   });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check of gebruiker al is ingelogd
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (isLoggedIn === "true") {
+      onLogin();
+    }
+  }, [onLogin]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     // Simpele validatie
-    if (!formData.naam || !formData.email || !formData.school || !formData.klas || !formData.vak) {
+    if (!formData.email || !formData.wachtwoord) {
       setError("Vul alle velden in");
       return;
     }
@@ -38,12 +40,13 @@ export default function LoginForm() {
       return;
     }
 
-    // Sla de gegevens op in localStorage
-    localStorage.setItem("userData", JSON.stringify(formData));
-    setIsLoggedIn(true);
+    // Accepteer elke geldige e-mail en wachtwoord combinatie
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("userEmail", formData.email);
+    onLogin();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -51,34 +54,17 @@ export default function LoginForm() {
     }));
   };
 
-  if (isLoggedIn) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-        <div className="text-center mb-6">
-          <h2 className="text-gray-900 text-2xl font-bold mb-2">Welkom bij de Document Scanner</h2>
-          <p className="text-gray-600">Vul je gegevens in om te beginnen</p>
+    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-purple-100 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border-4 border-blue-300">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-extrabold text-blue-800 mb-2">Welkom terug!</h2>
+          <p className="text-gray-800">Log in om door te gaan</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="naam" className="block text-sm font-medium text-gray-900 mb-1">
-              Naam
-            </label>
-            <input
-              type="text"
-              id="naam"
-              name="naam"
-              value={formData.naam}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
-              placeholder="Jouw naam"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-1">
               E-mailadres
             </label>
             <input
@@ -87,81 +73,49 @@ export default function LoginForm() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+              className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
               placeholder="jouw@email.nl"
             />
           </div>
 
           <div>
-            <label htmlFor="school" className="block text-sm font-medium text-gray-900 mb-1">
-              School
+            <label htmlFor="wachtwoord" className="block text-sm font-semibold text-gray-900 mb-1">
+              Wachtwoord
             </label>
             <input
-              type="text"
-              id="school"
-              name="school"
-              value={formData.school}
+              type="password"
+              id="wachtwoord"
+              name="wachtwoord"
+              value={formData.wachtwoord}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
-              placeholder="Naam van je school"
+              className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+              placeholder="••••••••"
             />
           </div>
 
-          <div>
-            <label htmlFor="klas" className="block text-sm font-medium text-gray-900 mb-1">
-              Klas
-            </label>
-            <select
-              id="klas"
-              name="klas"
-              value={formData.klas}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
-            >
-              <option value="">Selecteer een klas</option>
-              <option value="groep 1">Groep 1</option>
-              <option value="groep 2">Groep 2</option>
-              <option value="groep 3">Groep 3</option>
-              <option value="groep 4">Groep 4</option>
-              <option value="groep 5">Groep 5</option>
-              <option value="groep 6">Groep 6</option>
-              <option value="groep 7">Groep 7</option>
-              <option value="groep 8">Groep 8</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="vak" className="block text-sm font-medium text-gray-900 mb-1">
-              Vak
-            </label>
-            <select
-              id="vak"
-              name="vak"
-              value={formData.vak}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
-            >
-              <option value="">Selecteer een vak</option>
-              <option value="rekenen">Rekenen</option>
-              <option value="taal">Taal</option>
-              <option value="spelling">Spelling</option>
-              <option value="lezen">Lezen</option>
-              <option value="schrijven">Schrijven</option>
-              <option value="overig">Overig</option>
-            </select>
-          </div>
-
           {error && (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-red-700 text-sm bg-red-50 p-3 rounded-lg border border-red-200">{error}</div>
           )}
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white py-3 px-4 rounded-lg font-bold hover:from-blue-800 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md"
           >
-            Start met Scannen
+            Inloggen
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-800 mb-2">Nog geen account?</p>
+            <Link
+              href="/register"
+              className="inline-block bg-gray-100 text-gray-800 py-2 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all border border-gray-300"
+            >
+              Registreren als docent
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

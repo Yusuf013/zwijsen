@@ -1,95 +1,202 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect } from "react";
-import AssignmentWizard, { AssignmentMeta } from "./AssignmentWizard";
-import DocumentScanner from "./DocumentScanner";
+import LoginForm from "./LoginForm";
+import Navigation from "./Navigation";
 
-function AssignmentTabs({ assignments, activeId, onSelect, onNew }: {
-  assignments: AssignmentMeta[];
-  activeId: string | null;
-  onSelect: (id: string) => void;
-  onNew: () => void;
-}) {
-  return (
-    <div className="flex gap-2 mb-6 overflow-x-auto">
-      {assignments.map((a: AssignmentMeta) => (
-        <button
-          key={a.id}
-          className={`px-4 py-2 rounded-full font-semibold border-2 transition-all whitespace-nowrap ${activeId===a.id ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-blue-600 shadow-lg" : "bg-white border-blue-200 text-blue-700 hover:bg-blue-50"}`}
-          onClick={() => onSelect(a.id)}
-        >
-          {a.klas} - {a.vak}
-        </button>
-      ))}
-      <button
-        className="px-4 py-2 rounded-full font-semibold border-2 border-dashed border-pink-400 text-pink-600 bg-pink-50 hover:bg-pink-100 transition-all"
-        onClick={onNew}
-      >
-        + Nieuwe opdracht
-      </button>
-    </div>
-  );
+interface Toets {
+  id: number;
+  titel: string;
+  vak: string;
+  groep: string;
+  datum: string;
+  status: "te_nakijken" | "te_afnemen";
 }
 
 export default function Home() {
-  const [showWizard, setShowWizard] = useState(false);
-  const [assignments, setAssignments] = useState<AssignmentMeta[]>([]);
-  const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [toetsen, setToetsen] = useState<Toets[]>([]);
 
-  // Laad opdrachten uit localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("assignments");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setAssignments(parsed);
-      if (parsed.length > 0) setActiveAssignmentId(parsed[0].id);
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const email = localStorage.getItem("userEmail");
+    if (isLoggedIn === "true") {
+      setIsLoggedIn(true);
+      setUserEmail(email);
     }
   }, []);
 
-  // Sla opdrachten op bij wijziging
   useEffect(() => {
-    localStorage.setItem("assignments", JSON.stringify(assignments));
-  }, [assignments]);
+    if (isLoggedIn) {
+      // Simuleer het ophalen van toetsen (in productie zou dit een API call zijn)
+      setToetsen([
+        {
+          id: 1,
+          titel: "Spellingtoets Hoofdstuk 3",
+          vak: "Spelling",
+          groep: "Groep 5",
+          datum: "2024-03-20",
+          status: "te_nakijken"
+        },
+        {
+          id: 2,
+          titel: "Rekentoets Tafels",
+          vak: "Rekenen",
+          groep: "Groep 4",
+          datum: "2024-03-20",
+          status: "te_afnemen"
+        },
+        {
+          id: 3,
+          titel: "Taaltoets Werkwoorden",
+          vak: "Taal",
+          groep: "Groep 6",
+          datum: "2024-03-21",
+          status: "te_afnemen"
+        }
+      ]);
+    }
+  }, [isLoggedIn]);
 
-  const handleNewAssignment = (meta: AssignmentMeta) => {
-    const newAssignments = [meta, ...assignments];
-    setAssignments(newAssignments);
-    setActiveAssignmentId(meta.id);
-    setShowWizard(false);
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    setUserEmail(localStorage.getItem("userEmail"));
   };
 
-  const activeAssignment = assignments.find(a => a.id === activeAssignmentId);
+  const getDagVanDeWeek = () => {
+    const dagen = [
+      "zondag",
+      "maandag",
+      "dinsdag",
+      "woensdag",
+      "donderdag",
+      "vrijdag",
+      "zaterdag"
+    ];
+    return dagen[new Date().getDay()];
+  };
+
+  const formatDatum = (datum: string) => {
+    return new Date(datum).toLocaleDateString("nl-NL", {
+      day: "numeric",
+      month: "long"
+    });
+  };
+
+  if (!isLoggedIn) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  const toetsenVandaag = toetsen.filter(toets => toets.datum === new Date().toISOString().split("T")[0]);
+  const toetsenTeNakijken = toetsen.filter(toets => toets.status === "te_nakijken");
+  const toetsenTeAfnemen = toetsen.filter(toets => toets.status === "te_afnemen");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 p-0 sm:p-8">
-      <header className="w-full py-8 px-4 sm:px-0 flex flex-col items-center bg-gradient-to-r from-blue-500 to-purple-500 mb-8 shadow-lg rounded-b-3xl">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow mb-2 tracking-tight">Document Scanner voor Basisschool</h1>
-        <p className="text-white/90 text-lg mb-4">Start een nieuwe opdracht en scan of upload het werk van je leerlingen</p>
-      </header>
-      <main className="max-w-2xl mx-auto flex flex-col items-center">
-        <AssignmentTabs
-          assignments={assignments}
-          activeId={activeAssignmentId}
-          onSelect={setActiveAssignmentId}
-          onNew={() => setShowWizard(true)}
-        />
-        {showWizard && (
-          <AssignmentWizard onComplete={handleNewAssignment} />
-        )}
-        {activeAssignment ? (
-          <div className="w-full mt-4">
-            <div className="mb-4 flex items-center gap-4">
-              <span className="inline-block px-3 py-1 rounded-full bg-blue-200 text-blue-800 font-semibold text-sm">{activeAssignment.klas}</span>
-              <span className="inline-block px-3 py-1 rounded-full bg-purple-200 text-purple-800 font-semibold text-sm">{activeAssignment.vak}</span>
-              <span className="inline-block px-3 py-1 rounded-full bg-pink-200 text-pink-800 font-semibold text-sm">{activeAssignment.methode === "upload" ? "Uploaden" : "Scannen"}</span>
-            </div>
-            {/* Hier komt de DocumentScanner, later per opdracht */}
-            <DocumentScanner />
+    <div className="min-h-screen bg-[#fdfbf7] flex">
+      <div className="w-64 flex-shrink-0">
+        <Navigation />
+      </div>
+      <main className="flex-1 px-8 py-10">
+        {/* Zoekbalk */}
+        <div className="mb-8 flex items-center space-x-4">
+          <div className="relative w-full max-w-md">
+            <input
+              type="text"
+              placeholder="Zoeken"
+              className="w-full pl-12 pr-4 py-3 rounded-full bg-white border border-gray-200 shadow focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400"
+              disabled
+            />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
           </div>
-        ) : (
-          <div className="text-center text-gray-500 mt-12 text-lg">Start een nieuwe opdracht om te beginnen!</div>
-        )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border-2 border-blue-100">
+          <h1 className="text-3xl font-bold text-blue-800 mb-2">
+            Welkom terug, {userEmail?.split("@")[0]}!
+          </h1>
+          <p className="text-gray-600">
+            Het is vandaag {getDagVanDeWeek()}, {new Date().toLocaleDateString("nl-NL", {
+              day: "numeric",
+              month: "long",
+              year: "numeric"
+            })}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Toetsen vandaag */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
+            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen vandaag</h2>
+            {toetsenVandaag.length > 0 ? (
+              <div className="space-y-4">
+                {toetsenVandaag.map(toets => (
+                  <div key={toets.id} className="bg-blue-50 p-4 rounded-full flex items-center justify-between border border-blue-200">
+                    <div>
+                      <h3 className="font-semibold text-blue-900">{toets.titel}</h3>
+                      <p className="text-blue-700">{toets.vak} - {toets.groep}</p>
+                    </div>
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                      toets.status === "te_nakijken" 
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-green-100 text-green-800"
+                    }`}>
+                      {toets.status === "te_nakijken" ? "Te nakijken" : "Te afnemen"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">Geen toetsen vandaag</p>
+            )}
+          </div>
+
+          {/* Toetsen te nakijken */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
+            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen te nakijken</h2>
+            {toetsenTeNakijken.length > 0 ? (
+              <div className="space-y-4">
+                {toetsenTeNakijken.map(toets => (
+                  <div key={toets.id} className="bg-yellow-50 p-4 rounded-full flex items-center justify-between border border-yellow-200">
+                    <div>
+                      <h3 className="font-semibold text-yellow-900">{toets.titel}</h3>
+                      <p className="text-yellow-700">{toets.vak} - {toets.groep}</p>
+                    </div>
+                    <p className="text-yellow-600 text-sm mt-1">
+                      Afgenomen op {formatDatum(toets.datum)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">Geen toetsen te nakijken</p>
+            )}
+          </div>
+
+          {/* Toetsen te afnemen */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-100">
+            <h2 className="text-xl font-bold text-blue-800 mb-4">Toetsen te afnemen</h2>
+            {toetsenTeAfnemen.length > 0 ? (
+              <div className="space-y-4">
+                {toetsenTeAfnemen.map(toets => (
+                  <div key={toets.id} className="bg-green-50 p-4 rounded-full flex items-center justify-between border border-green-200">
+                    <div>
+                      <h3 className="font-semibold text-green-900">{toets.titel}</h3>
+                      <p className="text-green-700">{toets.vak} - {toets.groep}</p>
+                    </div>
+                    <p className="text-green-600 text-sm mt-1">
+                      Gepland op {formatDatum(toets.datum)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">Geen toetsen te afnemen</p>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
